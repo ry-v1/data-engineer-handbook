@@ -8,7 +8,7 @@
  CREATE TYPE scoring_class AS
      ENUM ('bad', 'average', 'good', 'star');
 
-
+DROP TABLE IF EXISTS players;
  CREATE TABLE players (
      player_name TEXT,
      height TEXT,

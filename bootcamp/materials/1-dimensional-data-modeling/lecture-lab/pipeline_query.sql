@@ -1,10 +1,10 @@
-WITH last_season AS (
+ WITH last_season AS (
     SELECT * FROM players
-    WHERE current_season = 1997
+    WHERE current_season = 2002
 
 ), this_season AS (
      SELECT * FROM player_seasons
-    WHERE season = 1998
+    WHERE season = 2003
 )
 INSERT INTO players
 SELECT
@@ -32,10 +32,10 @@ SELECT
                     WHEN ts.pts > 15 THEN 'good'
                     WHEN ts.pts > 10 THEN 'average'
                     ELSE 'bad' END)::scoring_class
-             ELSE ls.scoring_class
+             ELSE ls.scorer_class
          END as scoring_class,
          ts.season IS NOT NULL as is_active,
-         1998 AS current_season
+         2003 AS current_season
 
     FROM last_season ls
     FULL OUTER JOIN this_season ts

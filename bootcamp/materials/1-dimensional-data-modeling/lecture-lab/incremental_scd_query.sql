@@ -5,12 +5,12 @@ CREATE TYPE scd_type AS (
                     start_season INTEGER,
                     end_season INTEGER
                         )
-
+;
 
 WITH last_season_scd AS (
     SELECT * FROM players_scd
-    WHERE current_season = 2021
-    AND end_season = 2021
+    WHERE current_season = 2001
+    AND end_season = 2001
 ),
      historical_scd AS (
         SELECT
@@ -20,24 +20,24 @@ WITH last_season_scd AS (
                start_season,
                end_season
         FROM players_scd
-        WHERE current_season = 2021
-        AND end_season < 2021
+        WHERE current_season = 2001
+        AND end_season < 2001
      ),
      this_season_data AS (
          SELECT * FROM players
-         WHERE current_season = 2022
+         WHERE current_season = 2002
      ),
      unchanged_records AS (
          SELECT
                 ts.player_name,
-                ts.scoring_class,
+                ts.scorer_class,
                 ts.is_active,
                 ls.start_season,
                 ts.current_season as end_season
         FROM this_season_data ts
         JOIN last_season_scd ls
         ON ls.player_name = ts.player_name
-         WHERE ts.scoring_class = ls.scoring_class
+         WHERE ts.scorer_class = ls.scoring_class
          AND ts.is_active = ls.is_active
      ),
      changed_records AS (
@@ -52,7 +52,7 @@ WITH last_season_scd AS (
 
                         )::scd_type,
                     ROW(
-                        ts.scoring_class,
+                        ts.scorer_class,
                         ts.is_active,
                         ts.current_season,
                         ts.current_season
@@ -61,7 +61,7 @@ WITH last_season_scd AS (
         FROM this_season_data ts
         LEFT JOIN last_season_scd ls
         ON ls.player_name = ts.player_name
-         WHERE (ts.scoring_class <> ls.scoring_class
+         WHERE (ts.scorer_class <> ls.scoring_class
           OR ts.is_active <> ls.is_active)
      ),
      unnested_changed_records AS (
@@ -77,7 +77,7 @@ WITH last_season_scd AS (
 
          SELECT
             ts.player_name,
-                ts.scoring_class,
+                ts.scorer_class,
                 ts.is_active,
                 ts.current_season AS start_season,
                 ts.current_season AS end_season
@@ -89,7 +89,7 @@ WITH last_season_scd AS (
      )
 
 
-SELECT *, 2022 AS current_season FROM (
+SELECT *, 2002 AS current_season FROM (
                   SELECT *
                   FROM historical_scd
 
