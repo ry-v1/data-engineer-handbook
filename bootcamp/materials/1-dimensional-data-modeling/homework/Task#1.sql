@@ -48,3 +48,5 @@ CREATE TABLE actors (
             , is_active boolean
             , PRIMARY KEY (actor, actorid, year))
 ;
+SELECT * FROM actors WHERE actor = 'Orson Welles';
+SELECT * FROM actors_history_scd WHERE actor = 'Orson Welles';

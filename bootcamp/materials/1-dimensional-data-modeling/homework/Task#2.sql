@@ -1,7 +1,7 @@
 /*
     2.Cumulative table generation query: Write a query that populates the actors table one year at a time.
 */
-
+SELECT * FROM actors
 INSERT INTO actors
 
 WITH last_year AS (
