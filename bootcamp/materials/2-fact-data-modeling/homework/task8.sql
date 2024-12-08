@@ -20,27 +20,36 @@ WITH yesterday AS (
     today AS (
         SELECT DISTINCT
             host
-            , COUNT(host) AS hit_array
-            , ARRAY[COUNT(DISTINCT user_id)] AS unique_visitors
-            , DATE_TRUNC('MONTH', event_time::TIMESTAMP) AS month
+            , CAST(COUNT(host) AS INT) AS hit_array
+            , CAST(COUNT(DISTINCT user_id) AS INT) AS unique_visitors
+            , DATE(event_time) AS date
         FROM events
-        WHERE DATE(event_time) = '2023-01-02'
+        WHERE DATE(event_time) = '2023-01-03' -- '2023-01-02' --
             AND user_id IS NOT NULL
-        GROUP BY host, DATE_TRUNC('MONTH', event_time::TIMESTAMP)
+        GROUP BY host, DATE(event_time)
         )
 
     SELECT
         COALESCE(t.host, y.host) AS host
-        , COALESCE(t.hit_array, y.hit_array) AS hit_array
         , CASE 
-            WHEN t.host IS NOT NULL THEN ARRAY[t.unique_visitors] || y.unique_visitors
-            --WHEN y.host IS NULL THEN ARRAY[]::date[]
-            ELSE ARRAY[]::INTEGER[] || y.unique_visitors
+            WHEN y.hit_array IS NOT NULL
+                THEN y.hit_array ||  ARRAY[COALESCE(t.hit_array, 0)]
+            WHEN y.hit_array IS NULL
+                THEN ARRAY_FILL(0, ARRAY[COALESCE(date - DATE(DATE_TRUNC('month', date)), 0)]) || ARRAY[COALESCE(t.hit_array, 0)]           
+            END AS hit_array
+        , CASE 
+            WHEN y.unique_visitors IS NOT NULL
+                THEN y.unique_visitors ||  ARRAY[COALESCE(t.unique_visitors, 0)]
+            WHEN y.unique_visitors IS NULL
+                THEN ARRAY_FILL(0, ARRAY[COALESCE(date - DATE(DATE_TRUNC('month', date)), 0)]) || ARRAY[COALESCE(t.unique_visitors, 0)]           
             END AS unique_visitors
-        , COALESCE(t.month, y.month) AS month
+        , COALESCE(DATE_TRUNC('month', t.date), y.month) AS month
     FROM today t
     FULL OUTER JOIN yesterday y
     ON t.host = y.host
+    ON CONFLICT (host, month)
+    DO UPDATE SET unique_visitors = EXCLUDED.unique_visitors,
+                    hit_array = EXCLUDED.hit_array
     ;
 
 -- SELECT * FROM host_activity_reduced

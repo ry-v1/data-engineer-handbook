@@ -51,3 +51,118 @@ TRUNCATE TABLE user_devices_cumulated
 
  /*    SELECT * FROM user_devices_cumulated 
     ORDER BY user_id, date */
+
+with yesterday as(
+select * 
+from user_devices_cumulated 
+where date= date('2023-01-02')
+and user_id ='9446887345398050000'
+),
+today as (
+select  cast(e.user_id as text) as user_id,
+        d.browser_type as browser_type,
+        max(date(cast(e.event_time as timestamp))) as device_activity_date
+from events e join devices d
+on e.device_id = d.device_id 
+where  date(cast(e.event_time as timestamp))= date('2023-01-03')
+        and e.user_id is not null 
+        and d.browser_type is not null
+        and user_id ='9446887345398050000'
+group by e.user_id, d.browser_type
+)
+select coalesce(t.user_id, y.user_id) as user_id,
+coalesce(t.browser_type, y.browser_type) as browser_type,
+Case when y.device_activity_datelist is null then array[t.device_activity_date]
+    when t.device_activity_date is null then y.device_activity_datelist
+    else array[t.device_activity_date] || y.device_activity_datelist
+End
+as device_activity_datelist,
+coalesce(t.device_activity_date, y.date + Interval '1 Day') as date
+from today as t full outer join yesterday as y
+on t.user_id = y.user_id 
+where t.user_id ='9446887345398050000'
+
+with deduped_devices as (
+select device_id,browser_type, 
+        row_number() over(partition by device_id,browser_type) as rn
+from devices
+), --select * from deduped_devices where rn = 1 and browser_type = 'Googlebot'
+events_deduped as (
+select cast(user_id as text) as user_id,device_id, date(cast(event_time as timestamp)) event_time,
+        row_number() over(partition by cast(user_id as text),device_id order by date(cast(event_time as timestamp)) desc) as rn
+from     events  where user_id =  '9446887345398050000'
+),
+yesterday as(
+select * 
+from user_devices_cumulated 
+where date= date('2023-01-02')
+and user_id ='9446887345398050000'
+
+)
+,today as (
+select  e.user_id as user_id,
+        d.browser_type as browser_type,
+        max(date(e.event_time)) as device_activity_date
+from events_deduped e join deduped_devices d
+on e.device_id = d.device_id 
+where d.rn = 1 and --e.rn = 1 and 
+date(e.event_time)= date('2023-01-03')
+        and e.user_id is not null
+        and d.browser_type is not null
+        and user_id ='9446887345398050000'
+
+group by e.user_id, d.browser_type 
+)
+select  coalesce(t.user_id, y.user_id) as user_id,
+        coalesce(t.browser_type, y.browser_type) as browser_type,
+        Case when y.device_activity_datelist is null then array[t.device_activity_date]
+             when t.device_activity_date is null then y.device_activity_datelist
+             else array[t.device_activity_date] || y.device_activity_datelist
+        End
+        as device_activity_datelist,
+        coalesce(t.device_activity_date, y.date + Interval '1 Day') as date
+from today as t full outer join yesterday as y
+on t.user_id = y.user_id
+where t.user_id ='9446887345398050000'
+
+
+
+with deduped_devices as (
+select e.device_id,browser_type, 
+        row_number() over(partition by cast(user_id as text),e.device_id,browser_type, date(cast(event_time as timestamp)) order by date(cast(event_time as timestamp)) desc) as rn
+, cast(user_id as text) as user_id, date(cast(event_time as timestamp)) event_time
+from     events e
+join devices d
+on e.device_id = d.device_id 
+where e.user_id is not null
+        and d.browser_type is not null
+  and user_id =  '9446887345398050000'
+),
+yesterday as(
+select * 
+from user_devices_cumulated 
+where date= date('2023-01-02')
+and user_id ='9446887345398050000'
+
+)
+,today as (
+select  d.user_id as user_id,
+        d.browser_type as browser_type,
+        (date(d.event_time)) as device_activity_date
+from deduped_devices d
+where d.rn = 1 and --e.rn = 1 and 
+date(d.event_time)= date('2023-01-03')
+        and user_id ='9446887345398050000'
+--group by e.user_id, d.browser_type 
+)
+select  coalesce(t.user_id, y.user_id) as user_id,
+        coalesce(t.browser_type, y.browser_type) as browser_type,
+        Case when y.device_activity_datelist is null then array[t.device_activity_date]
+             when t.device_activity_date is null then y.device_activity_datelist
+             else array[t.device_activity_date] || y.device_activity_datelist
+        End
+        as device_activity_datelist,
+        coalesce(t.device_activity_date, y.date + Interval '1 Day') as date
+from today as t full outer join yesterday as y
+on t.user_id = y.user_id
+where t.user_id ='9446887345398050000'
