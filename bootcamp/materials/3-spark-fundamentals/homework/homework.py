@@ -161,7 +161,7 @@ most_kills.show()
 
 
 #     - Which playlist gets played the most?
-agg_playlist = result.groupBy(["playlist_id"]).agg(count("playlist_id").alias("agg_playlist_id"))
+agg_playlist = result.groupBy(["playlist_id"]).agg(countDistinct("match_id").alias("agg_playlist_id"))
 most_played = agg_playlist.orderBy("agg_playlist_id", ascending=False).limit(1)
 most_played.select("agg_playlist_id").show()
 '''
@@ -169,38 +169,38 @@ most_played.select("agg_playlist_id").show()
 +--------------------+---------------+
 |         playlist_id|agg_playlist_id|
 +--------------------+---------------+
-|f72e0ef0-7c4a-430...|        1565529|
+|f72e0ef0-7c4a-430...|           7640|
 +--------------------+---------------+
 '''
 
 
 #     - Which map gets played the most?
-agg_map_id = result.groupBy(["mapid", "map_name"]).agg(count("mapid").alias("agg_mapid"))
+agg_map_id = result.groupBy(["mapid", "map_name"]).agg(countDistinct("match_id").alias("agg_mapid"))
 most_map = agg_map_id.orderBy("agg_mapid", ascending=False).limit(1)
 most_map.select("agg_mapid").show()
 '''
 >>>
-+--------------------+--------+---------+
-|               mapid|map_name|agg_mapid|
-+--------------------+--------+---------+
-|c74c9d0f-f206-11e...|  Alpine|  1445545|
-+--------------------+--------+---------+
++--------------------+--------------+---------+
+|               mapid|      map_name|agg_mapid|
++--------------------+--------------+---------+
+|c7edbf0f-f206-11e...|Breakout Arena|     7032|
++--------------------+--------------+---------+
 '''
 
 
 #     - Which map do players get the most Killing Spree medals on?
 medal_map = (result.filter("classification == 'KillingSpree'")
-             .groupBy(["mapid", "map_name"]).agg(count("mapid").alias("map_kills"))
+             .groupBy(["mapid", "map_name"]).agg(countDistinct("match_id").alias("map_kills"))
              .select("map_name", "mapid","map_kills"))
 most_kills_map = medal_map.orderBy("map_kills", ascending=False).limit(1)
 most_kills_map.select("map_kills").show()
 '''
 >>>
-+--------+--------------------+---------+
-|map_name|               mapid|map_kills|
-+--------+--------------------+---------+
-|  Alpine|c74c9d0f-f206-11e...|    64309|
-+--------+--------------------+---------+
++--------------+--------------------+---------+
+|      map_name|               mapid|map_kills|
++--------------+--------------------+---------+
+|Breakout Arena|c7edbf0f-f206-11e...|     4917|
++--------------+--------------------+---------+
 '''
 
 
