@@ -1,5 +1,5 @@
 .idea/
 .DS_Store
-.vscode
-.pytest_cache
-.zip
+.vscode/
+.pytest_cache/
+*.zip
