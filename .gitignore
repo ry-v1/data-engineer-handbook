@@ -3,3 +3,8 @@
 .vscode/
 .pytest_cache/
 *.zip
+metastore_db/
+.Trash-0/
+.ipynb_checkpoints/
+__pycache__/
+.log
