@@ -1,15 +1,18 @@
- CREATE TYPE season_stats AS (
+DROP TYPE IF EXISTS season_stats CASCADE;
+CREATE TYPE season_stats AS (
                          season Integer,
                          pts REAL,
                          ast REAL,
                          reb REAL,
                          weight INTEGER
                        );
- CREATE TYPE scoring_class AS
+
+DROP TYPE IF EXISTS scoring_class CASCADE;
+CREATE TYPE scoring_class AS
      ENUM ('bad', 'average', 'good', 'star');
 
-
- CREATE TABLE players (
+DROP TABLE IF EXISTS players;
+CREATE TABLE players (
      player_name TEXT,
      height TEXT,
      college TEXT,
@@ -24,6 +27,3 @@
      current_season INTEGER,
      PRIMARY KEY (player_name, current_season)
  );
-
-
-

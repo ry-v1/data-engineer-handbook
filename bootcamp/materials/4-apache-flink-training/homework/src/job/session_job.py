@@ -2,14 +2,16 @@ import os
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import EnvironmentSettings, DataTypes, TableEnvironment, StreamTableEnvironment
 from pyflink.table.expressions import lit, col
-from pyflink.table.window import Tumble
+from pyflink.table.window import Session
 
 
-def create_aggregated_events_sink_postgres(t_env):
-    table_name = 'processed_events_aggregated'
+def create_sessionized_events_sink_postgres(t_env):
+    table_name = 'processed_events_sessions'
     sink_ddl = f"""
         CREATE TABLE {table_name} (
-            event_hour TIMESTAMP(3),
+            session_start TIMESTAMP(3),
+            session_end TIMESTAMP(3),
+            ip VARCHAR,
             host VARCHAR,
             num_hits BIGINT
         ) WITH (
@@ -24,26 +26,6 @@ def create_aggregated_events_sink_postgres(t_env):
     t_env.execute_sql(sink_ddl)
     return table_name
 
-
-def create_aggregated_events_referrer_sink_postgres(t_env):
-    table_name = 'processed_events_aggregated_source'
-    sink_ddl = f"""
-        CREATE TABLE {table_name} (
-            event_hour TIMESTAMP(3),
-            host VARCHAR,
-            referrer VARCHAR,
-            num_hits BIGINT
-        ) WITH (
-            'connector' = 'jdbc',
-            'url' = '{os.environ.get("POSTGRES_URL")}',
-            'table-name' = '{table_name}',
-            'username' = '{os.environ.get("POSTGRES_USER", "postgres")}',
-            'password' = '{os.environ.get("POSTGRES_PASSWORD", "postgres")}',
-            'driver' = 'org.postgresql.Driver'
-        );
-    """
-    t_env.execute_sql(sink_ddl)
-    return table_name
 
 def create_processed_events_source_kafka(t_env):
     kafka_key = os.environ.get("KAFKA_WEB_TRAFFIC_KEY", "")
@@ -77,7 +59,7 @@ def create_processed_events_source_kafka(t_env):
     return table_name
 
 
-def log_aggregation():
+def log_session_aggregation():
     # Set up the execution environment
     env = StreamExecutionEnvironment.get_execution_environment()
     env.enable_checkpointing(10)
@@ -91,41 +73,26 @@ def log_aggregation():
         # Create Kafka table
         source_table = create_processed_events_source_kafka(t_env)
 
-        aggregated_table = create_aggregated_events_sink_postgres(t_env)
-        aggregated_sink_table = create_aggregated_events_referrer_sink_postgres(t_env)
+        sesions_table = create_sessionized_events_sink_postgres(t_env)
         t_env.from_path(source_table)\
             .window(
-            Tumble.over(lit(1).minutes).on(col("window_timestamp")).alias("w")
+                Session.with_gap(lit(5).minutes).on(col("window_timestamp")).alias("w")
         ).group_by(
             col("w"),
+            col("ip"),
             col("host")
-        ) \
-            .select(
-                    col("w").start.alias("event_hour"),
-                    col("host"),
-                    col("host").count.alias("num_hits")
-            ) \
-            .execute_insert(aggregated_table)
-
-        t_env.from_path(source_table).window(
-            Tumble.over(lit(1).minutes).on(col("window_timestamp")).alias("w")
-        ).group_by(
-            col("w"),
+        ).select(
+            col("w").start.alias("session_start"),
+            col("w").end.alias("session_end"),
+            col("ip"),
             col("host"),
-            col("referrer")
-        ) \
-            .select(
-            col("w").start.alias("event_hour"),
-            col("host"),
-            col("referrer"),
             col("host").count.alias("num_hits")
-        ) \
-            .execute_insert(aggregated_sink_table) \
-            .wait()
+        ).execute_insert(sesions_table) \
+        .wait()
 
     except Exception as e:
         print("Writing records from Kafka to JDBC failed:", str(e))
 
 
 if __name__ == '__main__':
-    log_aggregation()
+    log_session_aggregation()

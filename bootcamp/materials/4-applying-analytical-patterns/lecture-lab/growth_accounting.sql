@@ -1,6 +1,7 @@
+INSERT INTO users_growth_accounting
 WITH yesterday AS (
     SELECT * FROM users_growth_accounting
-    WHERE date = DATE('2023-03-09')
+    WHERE date = DATE('2023-01-11')
 ),
      today AS (
          SELECT
@@ -8,7 +9,7 @@ WITH yesterday AS (
             DATE_TRUNC('day', event_time::timestamp) as today_date,
             COUNT(1)
          FROM events
-         WHERE DATE_TRUNC('day', event_time::timestamp) = DATE('2023-03-10')
+         WHERE DATE_TRUNC('day', event_time::timestamp) = DATE('2023-01-12')
          AND user_id IS NOT NULL
          GROUP BY user_id, DATE_TRUNC('day', event_time::timestamp)
      )
@@ -44,3 +45,10 @@ WITH yesterday AS (
          FROM today t
                   FULL OUTER JOIN yesterday y
                                   ON t.user_id = y.user_id
+/* 
+
+SELECT * FROM users_growth_accounting
+WHERE date >= DATE('2023-01-10') 
+AND user_id = '568596539987322000'
+
+*/

@@ -1,0 +1,78 @@
+WITH years AS (
+    SELECT *
+    FROM GENERATE_SERIES(1970, 1978) AS current_year
+), first_appearances AS (
+    SELECT
+        actor, actorid,
+        MIN(year) AS first_appear
+    FROM actor_films 
+    GROUP BY actor,actorid
+),
+
+actors_and_years AS (
+       SELECT *
+        FROM first_appearances fa
+        JOIN years y
+            ON fa.first_appear <= y.current_year
+)
+--, windowed AS (
+    SELECT DISTINCT
+        aay.actor, aay.actorid, aay.current_year
+        , af.year
+        , ARRAY_REMOVE(
+            ARRAY_AGG(
+                CASE
+                    WHEN af.year IS NOT NULL
+                    THEN
+                     ROW(
+                        af.film,
+                        af.year,
+                        af.votes,
+                        af.rating,
+                        af.filmid)::films_type
+                END
+                )
+            OVER (PARTITION BY aay.actor, aay.actorid 
+                ORDER BY COALESCE(aay.current_year, af.year)),
+           NULL
+        )  AS films
+        , 
+        -- CASE WHEN af.year IS NOT NULL
+        -- THEN 
+            ROUND(
+                CAST(
+                    AVG(rating) OVER (PARTITION BY aay.actor, aay.actorid 
+                    --, COALESCE(aay.current_year, af.year)
+                        ORDER BY COALESCE(aay.current_year, af.year))             
+                AS NUMERIC)
+            , 2) 
+        -- ELSE
+        --     ROUND(
+        --         CAST(
+        --             AVG(rating) OVER (PARTITION BY aay.actor, aay.actorid
+        --             , aay.current_year - 1, af.year
+        --                 ORDER BY COALESCE(aay.current_year - 1, af.year))
+        --         AS NUMERIC)
+        --     , 2)
+        -- END 
+        AS avg_rating
+    FROM actors_and_years aay
+    LEFT JOIN actor_films af
+        ON aay.actor = af.actor
+        AND aay.actorid = af.actorid
+        AND aay.current_year = af.year
+    where aay.actor = 'Fred Astaire'
+
+/* 
+)
+SELECT
+    actor, actorid, current_year, films, avg_rating
+    , CASE
+        WHEN avg_rating > 8 THEN 'star'
+        WHEN avg_rating > 7 THEN 'good'
+        WHEN avg_rating > 6 THEN 'average'
+        ELSE 'bad'
+    END::quality_class_type AS quality_class,
+    (films[CARDINALITY(films)]::films_type).year = current_year AS is_active
+FROM windowed w
+where actor = 'Fred Astaire'; */
